@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getGarden, updateGarden, deleteGarden } from '../api/gardens';
-import { getBlueprintByGarden } from '../api/blueprints';
+import { getBlueprintByGarden, updateBlueprint } from '../api/blueprints';
+import { processFullPipeline, checkHealth, getCategoryColor } from '../api/aiProcessing';
 import Button from '../components/Button';
 import InputField from '../components/InputField';
+import InteractiveOverlay from '../components/InteractiveOverlay';
 import './GardenDetailPage.css';
 
 const GardenDetailPage = () => {
@@ -19,11 +21,29 @@ const GardenDetailPage = () => {
     location: '',
     description: ''
   });
+  
+  // AI Processing states
+  const [aiProcessing, setAiProcessing] = useState(false);
+  const [aiResults, setAiResults] = useState(null);
+  const [aiError, setAiError] = useState(null);
+  const [aiServiceAvailable, setAiServiceAvailable] = useState(false);
+  const [activeTab, setActiveTab] = useState('skinned'); // 'skinned', 'processed', 'labeled', 'overlay'
 
   useEffect(() => {
     loadGarden();
     loadBlueprint();
+    checkAiService();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gardenId]);
+
+  const checkAiService = async () => {
+    try {
+      const health = await checkHealth();
+      setAiServiceAvailable(health.status === 'healthy');
+    } catch {
+      setAiServiceAvailable(false);
+    }
+  };
 
   const loadGarden = async () => {
     try {
@@ -35,6 +55,11 @@ const GardenDetailPage = () => {
         location: response.garden.location,
         description: response.garden.description || ''
       });
+      
+      // Load AI results if they exist
+      if (response.garden.aiResults) {
+        setAiResults(response.garden.aiResults);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -47,16 +72,69 @@ const GardenDetailPage = () => {
       const response = await getBlueprintByGarden(gardenId);
       console.log('Blueprint loaded:', response.blueprint);
       setBlueprint(response.blueprint);
+      
+      // Load AI results from blueprint if they exist
+      if (response.blueprint?.aiResults) {
+        setAiResults(response.blueprint.aiResults);
+      }
     } catch (err) {
       console.log('No blueprint found for this garden:', err.message);
       setBlueprint(null);
     }
   };
 
+  const handleGenerateLayout = async () => {
+    if (!blueprint) {
+      setAiError('Please create a blueprint first');
+      return;
+    }
+
+    // Get the non-skinned and skinned images from the blueprint
+    const nonSkinnedImage = blueprint.nonSkinnedPng || blueprint.pngImage;
+    const skinnedImage = blueprint.skinnedPng || blueprint.pngImage;
+
+    if (!nonSkinnedImage || nonSkinnedImage === "data:image/png;base64,placeholder") {
+      setAiError('No blueprint image available. Please export your blueprint first.');
+      return;
+    }
+
+    setAiProcessing(true);
+    setAiError(null);
+
+    try {
+      console.log('Starting AI pipeline processing...');
+      const results = await processFullPipeline(nonSkinnedImage, skinnedImage);
+      
+      console.log('AI Pipeline results:', results);
+      
+      if (results.success) {
+        setAiResults(results);
+        
+        // Save AI results to the blueprint
+        try {
+          await updateBlueprint(blueprint.blueprintId, {
+            aiResults: results
+          });
+          console.log('AI results saved to blueprint');
+        } catch (saveErr) {
+          console.error('Failed to save AI results:', saveErr);
+        }
+        
+        setActiveTab('processed');
+      } else {
+        setAiError(results.error || 'AI processing failed');
+      }
+    } catch (err) {
+      console.error('AI Processing Error:', err);
+      setAiError(err.message || 'Failed to process blueprint');
+    } finally {
+      setAiProcessing(false);
+    }
+  };
+
   const handleViewBlueprint = () => {
     if (!blueprint) return;
 
-    // Get user ID from token
     const token = localStorage.getItem('token');
     let userId = '';
     if (token) {
@@ -69,13 +147,11 @@ const GardenDetailPage = () => {
       }
     }
 
-    // Open replit floorplan in new tab with edit mode and auto-navigate to export
     const blueprintUrl = `http://localhost:5174/?mode=edit&blueprint_id=${blueprint.blueprintId}&garden_id=${gardenId}&user_id=${userId}&auto_step=export`;
     window.open(blueprintUrl, '_blank', 'width=1200,height=800');
   };
 
   const handleCreateBlueprint = () => {
-    // Get user ID from token
     const token = localStorage.getItem('token');
     let userId = '';
     if (token) {
@@ -88,18 +164,14 @@ const GardenDetailPage = () => {
       }
     }
 
-    // Open replit floorplan in new tab with create mode
     const blueprintUrl = `http://localhost:5174/?mode=create&garden_id=${gardenId}&user_id=${userId}`;
-    const blueprintWindow = window.open(blueprintUrl, '_blank', 'width=1200,height=800');
+    window.open(blueprintUrl, '_blank', 'width=1200,height=800');
 
-    // Listen for blueprint data from child window
     const handleMessage = async (event) => {
-      // Verify origin for security
       if (event.origin !== 'http://localhost:5174') return;
 
       if (event.data.type === 'BLUEPRINT_SAVED' && event.data.blueprintData) {
         try {
-          // Save blueprint to backend
           const { createBlueprint } = await import('../api/blueprints');
           await createBlueprint({
             gardenId: gardenId,
@@ -107,7 +179,6 @@ const GardenDetailPage = () => {
             name: `${garden.name} Blueprint`
           });
 
-          // Reload blueprint data
           window.removeEventListener('message', handleMessage);
           loadBlueprint();
         } catch (error) {
@@ -165,6 +236,182 @@ const GardenDetailPage = () => {
       ...prev,
       [field]: value
     }));
+  };
+
+  const downloadCSV = () => {
+    if (!aiResults?.csv) return;
+    
+    const blob = new Blob([aiResults.csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${garden.name}-symbols.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const renderAiResults = () => {
+    if (!aiResults) return null;
+
+    const { phase2, phase3, overlay_data } = aiResults;
+
+    return (
+      <div className="ai-results-section">
+        <h3>🌿 Garden Layout Analysis</h3>
+        
+        {/* Tabs */}
+        <div className="ai-tabs">
+          <button 
+            className={`ai-tab ${activeTab === 'skinned' ? 'active' : ''}`}
+            onClick={() => setActiveTab('skinned')}
+          >
+            Skinned View
+          </button>
+          <button 
+            className={`ai-tab ${activeTab === 'processed' ? 'active' : ''}`}
+            onClick={() => setActiveTab('processed')}
+          >
+            Processed Blueprint
+          </button>
+          <button 
+            className={`ai-tab ${activeTab === 'labeled' ? 'active' : ''}`}
+            onClick={() => setActiveTab('labeled')}
+          >
+            Symbol Detection
+          </button>
+          {overlay_data && overlay_data.length > 0 && (
+            <button 
+              className={`ai-tab ${activeTab === 'overlay' ? 'active' : ''}`}
+              onClick={() => setActiveTab('overlay')}
+            >
+              Interactive View
+            </button>
+          )}
+        </div>
+
+        {/* Tab Content */}
+        <div className="ai-tab-content">
+          {activeTab === 'skinned' && blueprint?.pngImage && (
+            <div className="image-container">
+              <img 
+                src={blueprint.pngImage.startsWith('data:') ? blueprint.pngImage : `data:image/png;base64,${blueprint.pngImage}`}
+                alt="Skinned Blueprint"
+                className="blueprint-image"
+              />
+              <p className="image-caption">Your garden blueprint with visual styling</p>
+            </div>
+          )}
+
+          {activeTab === 'processed' && phase2?.filled_image_base64 && (
+            <div className="image-container">
+              <img 
+                src={`data:image/png;base64,${phase2.filled_image_base64}`}
+                alt="Processed Blueprint"
+                className="blueprint-image"
+              />
+              <p className="image-caption">
+                Matched blueprint (Similarity: {(phase2.similarity * 100).toFixed(1)}%)
+              </p>
+            </div>
+          )}
+
+          {activeTab === 'labeled' && phase3?.labeled_image_base64 && (
+            <div className="image-container">
+              <img 
+                src={`data:image/png;base64,${phase3.labeled_image_base64}`}
+                alt="Symbol Detection"
+                className="blueprint-image"
+              />
+              <p className="image-caption">
+                YOLO symbol detection ({phase3.total_detections} symbols found)
+              </p>
+            </div>
+          )}
+
+          {activeTab === 'overlay' && overlay_data && blueprint?.pngImage && (
+            <div className="overlay-container">
+              <InteractiveOverlay
+                imageBase64={blueprint.pngImage}
+                markers={overlay_data}
+                imageWidth={512}
+                imageHeight={512}
+              />
+              <p className="image-caption">
+                Hover over markers to see symbol details
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Summary Statistics */}
+        {phase3?.summary && (
+          <div className="ai-summary">
+            <h4>Detection Summary</h4>
+            
+            <div className="summary-grid">
+              <div className="summary-card">
+                <span className="summary-number">{phase3.total_detections}</span>
+                <span className="summary-label">Total Symbols</span>
+              </div>
+              <div className="summary-card">
+                <span className="summary-number">{phase3.summary.flowering_count}</span>
+                <span className="summary-label">🌸 Flowering</span>
+              </div>
+              <div className="summary-card">
+                <span className="summary-number">{phase3.summary.fruiting_count}</span>
+                <span className="summary-label">🍎 Fruiting</span>
+              </div>
+            </div>
+
+            <div className="category-breakdown">
+              <h5>By Category</h5>
+              <div className="category-bars">
+                {Object.entries(phase3.summary.by_category).map(([cat, count]) => (
+                  <div key={cat} className="category-bar">
+                    <span 
+                      className="category-color" 
+                      style={{ backgroundColor: getCategoryColor(cat) }}
+                    />
+                    <span className="category-name">{cat}</span>
+                    <span className="category-count">{count}</span>
+                    <div 
+                      className="category-fill"
+                      style={{ 
+                        width: `${(count / phase3.total_detections) * 100}%`,
+                        backgroundColor: getCategoryColor(cat)
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="size-distribution">
+              <h5>Size Distribution</h5>
+              <div className="size-chips">
+                <span className="size-chip small">
+                  Small: {phase3.summary.size_distribution.small}
+                </span>
+                <span className="size-chip medium">
+                  Medium: {phase3.summary.size_distribution.medium}
+                </span>
+                <span className="size-chip large">
+                  Large: {phase3.summary.size_distribution.large}
+                </span>
+              </div>
+            </div>
+
+            {aiResults.csv && (
+              <Button onClick={downloadCSV} className="download-csv-btn">
+                📊 Download CSV Report
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (loading) {
@@ -290,11 +537,10 @@ const GardenDetailPage = () => {
                       ✓ Blueprint created on {new Date(blueprint.createdAt).toLocaleDateString()}
                     </p>
                     
-                    {/* Display PNG image if available */}
                     {blueprint.pngImage && blueprint.pngImage !== "data:image/png;base64,placeholder" && (
                       <div style={{ marginTop: '15px', marginBottom: '15px' }}>
                         <img 
-                          src={blueprint.pngImage} 
+                          src={blueprint.pngImage.startsWith('data:') ? blueprint.pngImage : `data:image/png;base64,${blueprint.pngImage}`}
                           alt="Garden Blueprint" 
                           style={{ 
                             maxWidth: '100%', 
@@ -307,7 +553,7 @@ const GardenDetailPage = () => {
                       </div>
                     )}
                     
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
                       <Button 
                         onClick={handleViewBlueprint} 
                         variant="primary"
@@ -315,7 +561,15 @@ const GardenDetailPage = () => {
                         📐 View & Edit Blueprint
                       </Button>
                       
-                      {/* Download PDF button if available */}
+                      <Button 
+                        onClick={handleGenerateLayout}
+                        disabled={aiProcessing || !aiServiceAvailable}
+                        variant="primary"
+                        style={{ backgroundColor: '#10b981' }}
+                      >
+                        {aiProcessing ? '🔄 Processing...' : '🌿 Generate Garden Layout'}
+                      </Button>
+                      
                       {blueprint.pdfImage && blueprint.pdfImage !== "data:application/pdf;base64,placeholder" && (
                         <a 
                           href={blueprint.pdfImage} 
@@ -328,6 +582,18 @@ const GardenDetailPage = () => {
                         </a>
                       )}
                     </div>
+                    
+                    {!aiServiceAvailable && (
+                      <p style={{ color: '#f59e0b', marginTop: '10px', fontSize: '14px' }}>
+                        ⚠️ AI service is not available. Start the AI backend to enable garden layout generation.
+                      </p>
+                    )}
+                    
+                    {aiError && (
+                      <p style={{ color: '#ef4444', marginTop: '10px' }}>
+                        ❌ {aiError}
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div>
@@ -344,6 +610,24 @@ const GardenDetailPage = () => {
                   </div>
                 )}
               </div>
+              
+              {/* AI Results Section */}
+              {(aiResults || aiProcessing) && (
+                <div className="info-section">
+                  {aiProcessing ? (
+                    <div className="ai-processing-indicator">
+                      <div className="spinner"></div>
+                      <p>Processing your garden layout with AI...</p>
+                      <p className="processing-steps">
+                        Phase 2: Matching blueprint with embeddings database<br/>
+                        Phase 3: Detecting garden symbols with YOLO
+                      </p>
+                    </div>
+                  ) : (
+                    renderAiResults()
+                  )}
+                </div>
+              )}
               
               <div className="info-section">
                 <h3>Created</h3>

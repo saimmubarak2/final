@@ -176,6 +176,117 @@
   color: #999;
 }
 
+/* ==================== CITY SELECT STYLES ==================== */
+.city-select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.3s ease;
+  background: white;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px;
+}
+
+.city-select:focus {
+  outline: none;
+  border-color: #144345;
+  box-shadow: 0 0 0 3px rgba(20, 67, 69, 0.1);
+}
+
+.city-select option {
+  padding: 10px;
+}
+
+/* ==================== BLUEPRINT SECTION STYLES ==================== */
+.blueprint-section {
+  text-align: center;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+}
+
+.blueprint-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.blueprint-info {
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.blueprint-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px 0;
+  text-align: left;
+  display: inline-block;
+}
+
+.blueprint-features li {
+  padding: 8px 0;
+  color: #555;
+  font-size: 14px;
+}
+
+.blueprint-btn {
+  display: inline-block;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+}
+
+.blueprint-btn:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+}
+
+.blueprint-hint {
+  font-size: 13px;
+  color: #888;
+  margin: 0;
+}
+
+/* Waiting indicator */
+.waiting-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
+.waiting-indicator .spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #10b981;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.waiting-indicator p {
+  margin: 0;
+  color: #333;
+}
+
+.waiting-indicator .hint {
+  font-size: 13px;
+  color: #888;
+  margin-top: 8px;
+}
+
 /* ==================== MAP STYLES ==================== */
 .map-container {
   margin-top: 20px;
