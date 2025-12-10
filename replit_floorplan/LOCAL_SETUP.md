@@ -100,39 +100,32 @@ npm run dev
 ```
 VITE v5.x.x  ready in xxx ms
 
-➜  Local:   http://localhost:5173/
+➜  Local:   http://localhost:5174/
 ➜  Network: use --host to expose
 ➜  press h + enter to show help
 
-Server running on http://localhost:5000
+serving on port 5174
 ```
 
 #### Step 4: Open in Browser
 
-Navigate to: **http://localhost:5173**
+Navigate to: **http://localhost:5174**
 
 ## Understanding the Architecture
 
 ### Ports
 
-- **Frontend (Vite Dev Server)**: Port 5173
-  - Serves the React application
-  - Hot Module Replacement (HMR) enabled
-  - Proxies API requests to backend
-
-- **Backend (Express Server)**: Port 5000
-  - REST API endpoints
-  - In-memory storage
-  - Export engine for PDF/PNG
+- **Application Server**: Port 5174 (default)
+  - Serves both the React application and Express API
+  - Hot Module Replacement (HMR) enabled in development
+  - Single unified server for simplicity
 
 ### Development Workflow
 
 ```
-Browser (localhost:5173)
+Browser (localhost:5174)
     ↓
-Vite Dev Server (HMR, React)
-    ↓
-Express Backend (localhost:5000)
+Express Server + Vite Dev Middleware
     ↓
 In-Memory Storage
 ```
@@ -209,14 +202,14 @@ npm run db:push      # Push schema to database
 
 ## Environment Variables
 
-Create a `.env` file in the root directory (optional):
+Create a `.env` file in the root directory (recommended):
 
 ```env
-PORT=5000
+PORT=5174
 NODE_ENV=development
 ```
 
-The `.env.example` file is provided as a template.
+The `.env.example` file is provided as a template. A `.env` file has been created for you with these defaults.
 
 ## Troubleshooting
 
@@ -232,12 +225,15 @@ npm install
 **Solution:**
 ```bash
 # Windows PowerShell - Find process using port
-netstat -ano | findstr :5173
+netstat -ano | findstr :5174
 taskkill /PID <PID> /F
 
-# Or change the port
-npm run dev -- --port 3000
+# Or create .env file with different port
+echo PORT=5175 > .env
+echo NODE_ENV=development >> .env
 ```
+
+See [WINDOWS_PORT_FIX.md](./WINDOWS_PORT_FIX.md) for detailed help.
 
 ### Issue: Module not found errors
 
@@ -317,7 +313,7 @@ npm run dev
 
 1. **Keep the terminal open** - Watch for errors and logs
 2. **Use browser DevTools** - Press F12 to debug frontend issues
-3. **Check both ports** - Frontend (5173) and Backend (5000)
+3. **Check the port** - Default is 5174 (configurable via .env)
 4. **Save frequently** - HMR will update the browser automatically
 5. **Run type checking** - Use `npm run check` to catch TypeScript errors
 6. **Use VS Code extensions** - They make development much easier

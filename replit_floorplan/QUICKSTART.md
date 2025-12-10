@@ -53,27 +53,24 @@ You should see output like:
 ```
 VITE v5.x.x  ready in xxx ms
 
-➜  Local:   http://localhost:5173/
+➜  Local:   http://localhost:5174/
 ➜  Network: use --host to expose
 
-Server running on http://localhost:5000
+serving on port 5174
 ```
 
 ### 5. Open in Browser
 
 Open your browser and go to:
 ```
-http://localhost:5173
+http://localhost:5174
 ```
 
 🎉 **You're done!** The app should now be running.
 
 ## What's Running?
 
-- **Frontend (React + Vite)**: http://localhost:5173
-- **Backend (Express API)**: http://localhost:5000
-
-The frontend automatically proxies API requests to the backend.
+The application runs on port **5174** by default (frontend and backend served together).
 
 ## Making Changes
 
@@ -93,13 +90,20 @@ In the terminal where the server is running:
 **Problem**: Node.js/npm not installed
 **Solution**: Install Node.js from https://nodejs.org/
 
-### ❌ "Port 5173 is already in use"
-**Problem**: Another app is using the port
+### ❌ "Port already in use" (EADDRINUSE)
+**Problem**: Another app is using port 5174
 **Solution**: 
 ```bash
-# Kill the process or change the port
-npm run dev -- --port 3000
+# Option 1: Create .env file with different port
+echo PORT=5175 > .env
+echo NODE_ENV=development >> .env
+
+# Option 2: Kill the conflicting process (Windows)
+netstat -ano | findstr :5174
+taskkill /PID <PID> /F
 ```
+
+See [WINDOWS_PORT_FIX.md](./WINDOWS_PORT_FIX.md) for detailed troubleshooting.
 
 ### ❌ "Cannot find module"
 **Problem**: Dependencies not installed properly

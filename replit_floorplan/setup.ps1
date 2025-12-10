@@ -52,7 +52,7 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "  npm run dev" -ForegroundColor White
     Write-Host ""
     Write-Host "Then open your browser to:" -ForegroundColor Cyan
-    Write-Host "  http://localhost:5173" -ForegroundColor White
+    Write-Host "  http://localhost:5174" -ForegroundColor White
     Write-Host ""
     Write-Host "Press any key to exit..."
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")

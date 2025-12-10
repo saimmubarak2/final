@@ -81,5 +81,17 @@ app.use((req, res, next) => {
     reusePort: process.env.REPL_ID ? true : false,
   }, () => {
     log(`serving on port ${port}`);
+  }).on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n❌ Error: Port ${port} is already in use!`);
+      console.error(`\nTo fix this:`);
+      console.error(`  1. Change the PORT in your .env file to a different port (e.g., 5174, 5175, 3000)`);
+      console.error(`  2. Or kill the process using port ${port}`);
+      console.error(`  3. On Windows: netstat -ano | findstr :${port}`);
+      console.error(`  4. Then: taskkill /PID <PID> /F\n`);
+      process.exit(1);
+    } else {
+      throw err;
+    }
   });
 })();
