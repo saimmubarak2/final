@@ -1,14 +1,38 @@
 """
 Flask API Server for Blueprint AI Processing
 Handles Phase 2 (blueprint matching) and Phase 3 (YOLO symbol detection)
+
+Quick Start:
+  pip install flask flask-cors python-dotenv pillow numpy
+  python app.py
+
+Full ML Support (requires more dependencies):
+  pip install -r requirements.txt
 """
 
 import os
 import json
 import base64
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from dotenv import load_dotenv
+
+try:
+    from flask import Flask, request, jsonify
+    from flask_cors import CORS
+except ImportError as e:
+    print("=" * 60)
+    print("ERROR: Missing required packages!")
+    print("=" * 60)
+    print("\nPlease install the required dependencies:")
+    print("\n  pip install flask flask-cors python-dotenv pillow numpy")
+    print("\nOr for full ML support:")
+    print("\n  pip install -r requirements.txt")
+    print("=" * 60)
+    raise SystemExit(1)
+
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    # dotenv is optional
+    load_dotenv = lambda: None
 
 # Import local modules
 from blueprint_processor import BlueprintMatcher, process_blueprint_to_embedding
