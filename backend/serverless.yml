@@ -10,6 +10,7 @@ provider:
     COGNITO_USER_POOL_ID: eu-north-1_i7vhr8PxH
     COGNITO_REGION: eu-north-1
     GARDENS_TABLE: florify-gardens-dev
+    BLUEPRINTS_TABLE: florify-blueprints-dev
   iam:
     role:
       statements:
@@ -101,6 +102,39 @@ functions:
           method: delete
           cors: true
 
+  # Blueprints
+  create-blueprint:
+    handler: create_blueprint_handler.handler
+    events:
+      - http:
+          path: blueprints
+          method: post
+          cors: true
+
+  get-blueprint:
+    handler: get_blueprint_handler.handler
+    events:
+      - http:
+          path: blueprints/{blueprintId}
+          method: get
+          cors: true
+
+  get-blueprint-by-garden:
+    handler: get_blueprint_by_garden_handler.handler
+    events:
+      - http:
+          path: gardens/{gardenId}/blueprint
+          method: get
+          cors: true
+
+  update-blueprint:
+    handler: update_blueprint_handler.handler
+    events:
+      - http:
+          path: blueprints/{blueprintId}
+          method: put
+          cors: true
+
   # Test
   hello:
     handler: handler.hello
@@ -126,4 +160,29 @@ resources:
             KeyType: HASH
           - AttributeName: gardenId
             KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+
+    BlueprintsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: florify-blueprints-dev
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: blueprintId
+            AttributeType: S
+          - AttributeName: gardenId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+          - AttributeName: blueprintId
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: GardenIdIndex
+            KeySchema:
+              - AttributeName: gardenId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
         BillingMode: PAY_PER_REQUEST

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import TypewriterText from '../components/TypewriterText';
 import SimpleCreateGardenWizard from '../components/SimpleCreateGardenWizard';
-import EmptyGardenWizard from '../components/EmptyGardenWizard/EmptyGardenWizard';
 import GardenCard from '../components/GardenCard';
 import { getGardens } from '../api/gardens';
 import '../styles/landing.css';
@@ -11,7 +10,6 @@ import '../styles/landing.css';
 function LandingPage({ onLogout, userEmail }) {
   const navigate = useNavigate();
   const [showWizard, setShowWizard] = useState(false);
-  const [showEmptyGardenWizard, setShowEmptyGardenWizard] = useState(false);
   const [gardens, setGardens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -65,7 +63,6 @@ function LandingPage({ onLogout, userEmail }) {
   const handleGardenCreated = (newGarden) => {
     setGardens(prev => [newGarden, ...prev]);
     setShowWizard(false);
-    setShowEmptyGardenWizard(false);
   };
 
   const handleGardenClick = (gardenId) => {
@@ -74,7 +71,6 @@ function LandingPage({ onLogout, userEmail }) {
 
   const navbarLinks = [
     { text: 'ADD GARDEN', action: () => setShowWizard(true) },
-    { text: 'CREATE BLUEPRINT', action: () => setShowEmptyGardenWizard(true) },
     { text: 'YOUR GARDENS', action: () => document.getElementById('gardens-section')?.scrollIntoView({ behavior: 'smooth' }) },
     { text: 'INSPIRATION', action: () => console.log('Inspiration clicked') },
     { text: 'TIPS', action: () => console.log('Tips clicked') }
@@ -155,12 +151,6 @@ function LandingPage({ onLogout, userEmail }) {
                   >
                     CREATE GARDEN
                   </Button>
-                  <Button 
-                    onClick={() => setShowEmptyGardenWizard(true)}
-                    className="create-blueprint-cta"
-                  >
-                    CREATE BLUEPRINT 📐
-                  </Button>
                 </div>
               </TypewriterText>
             </div>
@@ -217,9 +207,6 @@ function LandingPage({ onLogout, userEmail }) {
                 <Button onClick={() => setShowWizard(true)}>
                   CREATE YOUR FIRST GARDEN
                 </Button>
-                <Button onClick={() => setShowEmptyGardenWizard(true)}>
-                  CREATE GARDEN BLUEPRINT 📐
-                </Button>
               </div>
             </div>
           ) : (
@@ -252,15 +239,6 @@ function LandingPage({ onLogout, userEmail }) {
             />
           </div>
         </div>
-      )}
-
-      {/* Empty Garden Wizard Modal */}
-      {showEmptyGardenWizard && (
-        <EmptyGardenWizard 
-          onClose={() => setShowEmptyGardenWizard(false)}
-          onGardenCreated={handleGardenCreated}
-          userEmail={userEmail}
-        />
       )}
     </div>
   );

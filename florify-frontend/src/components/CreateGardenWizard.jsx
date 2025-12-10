@@ -3,6 +3,7 @@ import Button from './Button';
 import InputField from './InputField';
 import TypewriterText from './TypewriterText';
 import config from '../config';
+import { createBlueprint } from '../api/blueprints';
 import '../styles/garden-wizard.css';
 
 const CreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
@@ -17,6 +18,7 @@ const CreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [createdGardenId, setCreatedGardenId] = useState(null);
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const markerRef = useRef(null);
@@ -24,7 +26,8 @@ const CreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
   const steps = [
     { number: 1, title: 'Garden Details', description: 'Name and describe your garden' },
     { number: 2, title: 'Location', description: 'Select your garden location on the map' },
-    { number: 3, title: 'Photo', description: 'Add a photo of your garden' }
+    { number: 3, title: 'Photo', description: 'Add a photo of your garden' },
+    { number: 4, title: 'Blueprint', description: 'Create your garden floor plan (optional)' }
   ];
 
   // Initialize Google Maps
@@ -245,8 +248,16 @@ const CreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
       });
 
       if (response.ok) {
-        const newGarden = await response.json();
-        onGardenCreated(newGarden);
+        const result = await response.json();
+        const newGarden = result.garden;
+        setCreatedGardenId(newGarden.gardenId);
+        
+        // Move to blueprint step instead of closing
+        if (currentStep === 3) {
+          setCurrentStep(4);
+        } else {
+          onGardenCreated(newGarden);
+        }
       } else {
         const errorData = await response.json();
         setError(errorData.message || 'Failed to create garden');
@@ -256,6 +267,62 @@ const CreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle blueprint creation in new tab
+  const handleCreateBlueprint = () => {
+    if (!createdGardenId) {
+      setError('Garden must be created first');
+      return;
+    }
+
+    // Get user ID from token
+    const token = localStorage.getItem('token');
+    let userId = '';
+    if (token) {
+      try {
+        const payload = token.split('.')[1];
+        const decoded = JSON.parse(atob(payload));
+        userId = decoded.sub;
+      } catch (e) {
+        console.error('Failed to decode token:', e);
+      }
+    }
+
+    // Open replit floorplan in new tab with create mode
+    const blueprintUrl = `http://localhost:5174/?mode=create&garden_id=${createdGardenId}&user_id=${userId}`;
+    const blueprintWindow = window.open(blueprintUrl, '_blank', 'width=1200,height=800');
+
+    // Listen for blueprint data from child window
+    const handleMessage = async (event) => {
+      // Verify origin for security
+      if (event.origin !== 'http://localhost:5174') return;
+
+      if (event.data.type === 'BLUEPRINT_SAVED' && event.data.blueprintData) {
+        try {
+          // Save blueprint to backend
+          await createBlueprint({
+            gardenId: createdGardenId,
+            blueprintData: event.data.blueprintData,
+            name: `${formData.name} Blueprint`
+          });
+
+          // Close wizard and refresh
+          window.removeEventListener('message', handleMessage);
+          onGardenCreated({ gardenId: createdGardenId, ...formData });
+        } catch (error) {
+          console.error('Failed to save blueprint:', error);
+          setError('Failed to save blueprint data');
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+  };
+
+  // Skip blueprint and finish
+  const handleSkipBlueprint = () => {
+    onGardenCreated({ gardenId: createdGardenId, ...formData });
   };
 
   const renderStepContent = () => {
@@ -366,6 +433,44 @@ const CreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
           </div>
         );
 
+      case 4:
+        return (
+          <div className="step-content">
+            <TypewriterText delay={100}>
+              <h3 className="step-title">Create Your Garden Blueprint</h3>
+            </TypewriterText>
+            <TypewriterText delay={200}>
+              <p className="step-description">
+                Design a detailed floor plan of your garden with our interactive blueprint editor. 
+                This step is optional but helps visualize your garden layout.
+              </p>
+            </TypewriterText>
+            <TypewriterText delay={300}>
+              <div className="blueprint-section">
+                <div className="blueprint-icon">📐</div>
+                <p className="blueprint-info">
+                  The blueprint editor will open in a new tab where you can:
+                </p>
+                <ul className="blueprint-features">
+                  <li>✓ Define plot boundaries and house shape</li>
+                  <li>✓ Add walls, doors, and pathways</li>
+                  <li>✓ Design driveways and patios</li>
+                  <li>✓ Export your design as PNG or PDF</li>
+                </ul>
+                <Button 
+                  onClick={handleCreateBlueprint} 
+                  className="primary-btn blueprint-btn"
+                >
+                  OPEN BLUEPRINT EDITOR 🎨
+                </Button>
+                <p className="blueprint-hint">
+                  Your garden has been saved. You can create a blueprint now or skip and add it later.
+                </p>
+              </div>
+            </TypewriterText>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -398,13 +503,13 @@ const CreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
         {error && <div className="error-message">{error}</div>}
 
         <div className="wizard-actions">
-          {currentStep > 1 && (
+          {currentStep > 1 && currentStep !== 4 && (
             <Button onClick={prevStep} className="secondary-btn">
               ← PREVIOUS
             </Button>
           )}
           
-          {currentStep < steps.length ? (
+          {currentStep < 3 ? (
             <Button 
               onClick={nextStep} 
               disabled={!validateStep(currentStep)}
@@ -412,13 +517,20 @@ const CreateGardenWizard = ({ onClose, onGardenCreated, userEmail }) => {
             >
               NEXT →
             </Button>
-          ) : (
+          ) : currentStep === 3 ? (
             <Button 
               onClick={handleSubmit} 
               disabled={loading || !formData.name.trim() || !formData.coordinates}
               className="primary-btn"
             >
-              {loading ? 'CREATING GARDEN...' : 'CREATE GARDEN 🌱'}
+              {loading ? 'CREATING GARDEN...' : 'CREATE GARDEN & CONTINUE →'}
+            </Button>
+          ) : (
+            <Button 
+              onClick={handleSkipBlueprint} 
+              className="secondary-btn"
+            >
+              SKIP & FINISH
             </Button>
           )}
         </div>
