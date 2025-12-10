@@ -57,7 +57,7 @@ npm install
 # 3. Start the server
 npm run dev
 
-# 4. Open browser to http://localhost:5173
+# 4. Open browser to http://localhost:5174
 ```
 
 That's it! 🎉
@@ -184,7 +184,7 @@ replit_floorplan/
 cd c:\replit3\replit_floorplan
 npm install
 npm run dev
-# Open http://localhost:5173
+# Open http://localhost:5174
 ```
 
 ### Daily Development:
@@ -244,9 +244,9 @@ rm -rf node_modules/.vite
 You'll know everything is working when:
 
 - [ ] `npm install` completes without errors
-- [ ] `npm run dev` starts both servers
-- [ ] Terminal shows "ready in xxx ms"
-- [ ] Browser opens http://localhost:5173
+- [ ] `npm run dev` starts the server
+- [ ] Terminal shows "serving on port 5174"
+- [ ] Browser opens http://localhost:5174
 - [ ] You see the Floorplan Wizard interface
 - [ ] No red errors in browser console (F12)
 - [ ] Making changes to files updates the browser
