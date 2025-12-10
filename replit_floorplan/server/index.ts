@@ -67,10 +67,9 @@ app.use((req, res, next) => {
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5001 if not specified (to avoid conflict with Florify backend on 5000).
+  // Default to 5174 for the floorplan builder (AI backend uses 5001, Florify frontend uses 5173)
   // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5001', 10);
+  const port = parseInt(process.env.PORT || '5174', 10);
 
   // Use localhost for local development, 0.0.0.0 for production/Replit
   // Windows doesn't support 0.0.0.0 binding in some configurations
@@ -82,5 +81,17 @@ app.use((req, res, next) => {
     reusePort: process.env.REPL_ID ? true : false,
   }, () => {
     log(`serving on port ${port}`);
+  }).on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n❌ Error: Port ${port} is already in use!`);
+      console.error(`\nTo fix this:`);
+      console.error(`  1. Change the PORT in your .env file to a different port (e.g., 5174, 5175, 3000)`);
+      console.error(`  2. Or kill the process using port ${port}`);
+      console.error(`  3. On Windows: netstat -ano | findstr :${port}`);
+      console.error(`  4. Then: taskkill /PID <PID> /F\n`);
+      process.exit(1);
+    } else {
+      throw err;
+    }
   });
 })();

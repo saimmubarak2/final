@@ -33,10 +33,10 @@ npm --version
 
 ### Step 1: Navigate to the Project Directory
 
-Open your terminal (PowerShell, Command Prompt, or VS Code integrated terminal) and navigate to the project folder:
+⚠️ **IMPORTANT**: Navigate to the **root** project folder, NOT the `client` subfolder!
 
 ```bash
-cd c:\replit3\replit_floorplan
+cd C:\florify_webapp\replit_floorplan
 ```
 
 ### Step 2: Install Dependencies
@@ -63,21 +63,21 @@ You should see output similar to:
 ```
 VITE v5.x.x  ready in xxx ms
 
-➜  Local:   http://localhost:5173/
+➜  Local:   http://localhost:5174/
 ➜  Network: use --host to expose
 ➜  press h + enter to show help
 
-Server running on http://localhost:5000
+serving on port 5174
 ```
 
 ### Step 4: Open in Browser
 
 Open your web browser and navigate to:
 ```
-http://localhost:5173
+http://localhost:5174
 ```
 
-The Vite dev server (frontend) runs on port **5173** by default, and the Express backend runs on port **5000**.
+The application runs on port **5174** by default (both frontend and backend are served together).
 
 ## Available Scripts
 
@@ -137,10 +137,22 @@ To debug in VS Code:
 
 ### Port Configuration
 
-If ports 5173 or 5000 are already in use, you can change them:
+The application uses port **5174** by default. If this port is already in use:
 
-- **Frontend (Vite)**: Add `--port 3000` to the dev script in `package.json`
-- **Backend (Express)**: Set the `PORT` environment variable
+1. Create a `.env` file in the root directory:
+   ```env
+   PORT=5175
+   NODE_ENV=development
+   ```
+
+2. Or set the PORT environment variable before running:
+   ```bash
+   # Windows PowerShell
+   $env:PORT=5175; npm run dev
+   
+   # Windows Command Prompt
+   set PORT=5175 && npm run dev
+   ```
 
 ## Troubleshooting
 
@@ -164,14 +176,27 @@ rm -rf node_modules package-lock.json
 npm install
 ```
 
-### Issue: Port already in use
+### Issue: Port already in use (EADDRINUSE)
 
-**Solution**: Kill the process using the port or change the port number:
+If you see an error like `Error: listen EADDRINUSE: address already in use ::1:5001`, the port is already being used.
+
+**Solution 1 - Change the port (Recommended)**:
 ```bash
-# Windows PowerShell
-netstat -ano | findstr :5000
+# Create a .env file with a different port
+echo PORT=5174 > .env
+echo NODE_ENV=development >> .env
+```
+
+**Solution 2 - Kill the process**:
+```bash
+# Windows PowerShell - Find what's using the port
+netstat -ano | findstr :5001
+
+# Kill the process (replace PID with actual process ID)
 taskkill /PID <PID> /F
 ```
+
+📖 See [WINDOWS_PORT_FIX.md](./WINDOWS_PORT_FIX.md) for detailed troubleshooting.
 
 ### Issue: TypeScript errors
 
@@ -206,16 +231,16 @@ To run the production build:
 npm start
 ```
 
-Then open `http://localhost:5000` in your browser.
+Then open `http://localhost:5174` in your browser (or whatever PORT you set in .env).
 
 ## Environment Variables
 
 The application uses the following environment variables:
 
 - `NODE_ENV` - Set to `development` or `production`
-- `PORT` - Server port (default: 5000)
+- `PORT` - Server port (default: 5174)
 
-You can create a `.env` file in the root directory to set these variables (optional).
+You can create a `.env` file in the root directory to set these variables. A `.env.example` file is provided as a template.
 
 ## Database (Future)
 
